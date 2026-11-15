@@ -1,8 +1,7 @@
-
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 
 dotenv.config();
 
@@ -53,6 +52,38 @@ app.get("/events", async (req, res) => {
     });
   }
 });
+
+
+app.get("/events/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send({
+        message: "Invalid event ID",
+      });
+    }
+
+    const event = await eventCollection.findOne({
+      _id: new ObjectId(id),
+    });
+
+    if (!event) {
+      return res.status(404).send({
+        message: "Event not found",
+      });
+    }
+
+    res.status(200).send(event);
+  } catch (err) {
+    console.error("Error fetching event:", err);
+
+    res.status(500).send({
+      message: "Failed to fetch event",
+    });
+  }
+});
+
 
 app.get("/", (req, res) => {
   res.send("SebaTori API is running!");
