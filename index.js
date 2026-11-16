@@ -27,6 +27,7 @@ export async function connectToMongoDB() {
 const mongoClient = await connectToMongoDB();
 const db = mongoClient.db("sebatori");
 const eventCollection = db.collection("event");
+const joinCollection = db.collection("eventJoins");
 
 app.post("/add-event", async (req, res) => {
   try {
@@ -100,6 +101,127 @@ app.get("/upcoming-events", async (req, res) => {
 
     res.status(500).send({
       message: "Failed to fetch upcoming events",
+    });
+  }
+});
+
+// Join an event
+app.post("/events/:id/join", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userEmail } = req.body;
+
+    // Validate event ID
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send({
+        message: "Invalid event ID",
+      });
+    }
+
+    // Validate user email
+    if (!userEmail || typeof userEmail !== "string") {
+      return res.status(400).send({
+        message: "User email is required",
+      });
+    }
+
+    const email = userEmail.trim().toLowerCase();
+    const eventId = new ObjectId(id);
+
+    // Check whether event exists
+    const event = await eventCollection.findOne({
+      _id: eventId,
+    });
+
+    if (!event) {
+      return res.status(404).send({
+        message: "Event not found",
+      });
+    }
+
+    // Check duplicate joining
+    const existingJoin = await joinCollection.findOne({
+      eventId,
+      userEmail: email,
+    });
+
+    if (existingJoin) {
+      return res.status(409).send({
+        message: "You have already joined this event.",
+      });
+    }
+
+    // Save joining information
+    const joinData = {
+      eventId,
+      userEmail: email,
+      joinedAt: new Date(),
+    };
+
+    await joinCollection.insertOne(joinData);
+
+    res.status(201).send({
+      message: "Successfully joined the event.",
+    });
+  } catch (error) {
+    console.error("Error joining event:", error);
+
+    res.status(500).send({
+      message: "Failed to join event",
+    });
+  }
+});
+
+// Get joined events by user email
+app.get("/joined-events", async (req, res) => {
+  try {
+    const userEmail = req.query.email;
+
+    if (!userEmail || typeof userEmail !== "string") {
+      return res.status(400).send({
+        message: "User email is required",
+      });
+    }
+
+    const email = userEmail.trim().toLowerCase();
+
+    const joinedEvents = await joinCollection
+      .aggregate([
+        {
+          $match: {
+            userEmail: email,
+          },
+        },
+        {
+          $lookup: {
+            from: "event",
+            localField: "eventId",
+            foreignField: "_id",
+            as: "event",
+          },
+        },
+        {
+          $unwind: "$event",
+        },
+        {
+          $sort: {
+            "event.eventDate": 1,
+          },
+        },
+        {
+          $replaceRoot: {
+            newRoot: "$event",
+          },
+        },
+      ])
+      .toArray();
+
+    res.status(200).send(joinedEvents);
+  } catch (error) {
+    console.error("Error fetching joined events:", error);
+
+    res.status(500).send({
+      message: "Failed to fetch joined events",
     });
   }
 });
