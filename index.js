@@ -84,6 +84,25 @@ app.get("/events/:id", async (req, res) => {
   }
 });
 
+app.get("/upcoming-events", async (req, res) => {
+  try {
+    const events = await eventCollection
+      .find({
+        eventDate: { $gt: new Date().toISOString().slice(0, 10) },
+      })
+      .sort({ eventDate: 1 })
+      .limit(6)
+      .toArray();
+
+    res.status(200).send(events);
+  } catch (err) {
+    console.error("Error fetching upcoming events:", err);
+
+    res.status(500).send({
+      message: "Failed to fetch upcoming events",
+    });
+  }
+});
 
 app.get("/", (req, res) => {
   res.send("SebaTori API is running!");
