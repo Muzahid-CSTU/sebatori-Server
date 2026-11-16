@@ -226,6 +226,116 @@ app.get("/joined-events", async (req, res) => {
   }
 });
 
+// Get events created by a user
+app.get("/my-events", async (req, res) => {
+  try {
+    const email = req.query.email;
+
+    if (!email || typeof email !== "string") {
+      return res.status(400).send({
+        message: "User email is required",
+      });
+    }
+
+    const events = await eventCollection
+      .find({ createdBy: email.trim().toLowerCase() })
+      .sort({ eventDate: 1 })
+      .toArray();
+
+    res.status(200).send(events);
+  } catch (error) {
+    console.error("Error fetching user events:", error);
+    res.status(500).send({
+      message: "Failed to fetch your events",
+    });
+  }
+});
+
+// Update an event
+app.put("/events/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userEmail, ...updatedData } = req.body;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send({
+        message: "Invalid event ID",
+      });
+    }
+
+    if (!userEmail || typeof userEmail !== "string") {
+      return res.status(400).send({
+        message: "User email is required",
+      });
+    }
+
+    const result = await eventCollection.updateOne(
+      {
+        _id: new ObjectId(id),
+        createdBy: userEmail.trim().toLowerCase(),
+      },
+      {
+        $set: updatedData,
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send({
+        message: "Event not found or you are not the owner",
+      });
+    }
+
+    res.status(200).send({
+      message: "Event updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating event:", error);
+    res.status(500).send({
+      message: "Failed to update event",
+    });
+  }
+});
+
+// Delete an event
+app.delete("/events/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email } = req.query;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send({
+        message: "Invalid event ID",
+      });
+    }
+
+    if (!email || typeof email !== "string") {
+      return res.status(400).send({
+        message: "User email is required",
+      });
+    }
+
+    const result = await eventCollection.deleteOne({
+      _id: new ObjectId(id),
+      createdBy: email.trim().toLowerCase(),
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send({
+        message: "Event not found or you are not the owner",
+      });
+    }
+
+    res.status(200).send({
+      message: "Event deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting event:", error);
+    res.status(500).send({
+      message: "Failed to delete event",
+    });
+  }
+});
+
 app.get("/", (req, res) => {
   res.send("SebaTori API is running!");
 });
