@@ -1,4 +1,3 @@
-
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -8,10 +7,10 @@ import { jwtVerify, createRemoteJWKSet } from "jose";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT;
 
 const AUTH_BASE_URL =
-  process.env.AUTH_BASE_URL || "http://localhost:3000";
+  process.env.AUTH_BASE_URL;
 
 const JWKS = createRemoteJWKSet(
   new URL("/api/auth/jwks", AUTH_BASE_URL)
