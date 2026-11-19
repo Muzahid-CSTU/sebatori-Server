@@ -318,6 +318,13 @@ app.delete("/events/:id", verifyToken, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`SebaTori server running on port ${PORT}`);
-});
+
+export default app;
+
+if (process.env.VERCEL !== "1") {
+  app.listen(PORT || 8000, () => {
+    console.log(
+      `SebaTori server running on port ${PORT || 8000}`
+    );
+  });
+}
